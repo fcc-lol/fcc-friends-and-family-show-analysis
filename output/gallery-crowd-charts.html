@@ -1,0 +1,260 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FCC Friends &amp; Family Show: occupancy charts</title>
+<style>
+:root { --bg:#ffffff; --ink:#111111; --muted:#6b6b66; --grid:#e3e2dc; --hover:#f1f0ea; --tipbg:#111111; --tipink:#ffffff; }
+@media (prefers-color-scheme: dark) {
+  :root { --bg:#141413; --ink:#f0efe9; --muted:#a3a29b; --grid:#33322e; --hover:#22211f; --tipbg:#f0efe9; --tipink:#141413; }
+}
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--ink); font:14px/1.5 "SF Mono", ui-monospace, Menlo, Consolas, monospace; -webkit-text-size-adjust:100%; }
+main { max-width:900px; margin:0 auto; padding:28px 16px 56px; }
+@media (min-width: 768px) { main { padding-top:88px; } }
+h1 { font-size:22px; line-height:1.25; margin:0 0 4px; letter-spacing:.02em; text-transform:uppercase; }
+.sub { margin:0; color:var(--muted); }
+.intro { margin:16px 0 0; max-width:64ch; }
+h2 { font-size:14px; letter-spacing:.06em; text-transform:uppercase; margin:44px 0 2px; padding-top:14px; border-top:1.5px solid var(--ink); }
+h3 { font-size:13px; margin:22px 0 6px; font-weight:700; }
+.note { color:var(--muted); margin:2px 0 0; font-size:12.5px; }
+.head { display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); gap:0 28px; margin:22px 0 0; padding:0; list-style:none; }
+.head li { display:flex; align-items:center; gap:14px; padding:10px 0; border-bottom:1px dotted var(--muted); }
+.head b { font-size:30px; line-height:1; min-width:96px; text-align:right; white-space:nowrap; }
+.head span { font-size:12.5px; line-height:1.35; }
+.chart { position:relative; width:100%; touch-action:pan-y; }
+.chart svg { display:block; width:100%; overflow:visible; }
+svg text { font:11.5px "SF Mono", ui-monospace, Menlo, Consolas, monospace; fill:var(--ink); }
+svg text.m { fill:var(--muted); }
+svg text.b { font-weight:700; font-size:12.5px; }
+svg text.halo { paint-order:stroke; stroke:var(--bg); stroke-width:4px; stroke-linejoin:round; }
+.grid { stroke:var(--grid); stroke-width:1; }
+.axis { stroke:var(--ink); stroke-width:1.2; }
+.line { fill:none; stroke:var(--ink); stroke-width:1.5; stroke-linejoin:round; }
+.dot { fill:var(--bg); stroke:var(--ink); stroke-width:1.2; }
+.dash { stroke:var(--ink); stroke-width:1.2; stroke-dasharray:6 4; fill:none; }
+.bar { stroke:var(--ink); stroke-width:1.2; }
+.whisk { stroke:var(--ink); stroke-width:1.6; }
+.hatchline { stroke:var(--ink); stroke-width:1; }
+.hatchline.soft { stroke:var(--muted); }
+.rowbg { fill:transparent; }
+.rowbg.on { fill:var(--hover); }
+.cross { stroke:var(--ink); stroke-width:1; }
+.focus { fill:var(--ink); stroke:var(--bg); stroke-width:2; }
+.hit { fill:transparent; cursor:crosshair; }
+#tip { position:fixed; z-index:10; pointer-events:none; background:var(--tipbg); color:var(--tipink); padding:8px 10px; font-size:12px; line-height:1.45;
+       max-width:260px; border-radius:3px; opacity:0; transition:opacity .08s; }
+#tip.on { opacity:1; }
+#tip b { font-size:15px; display:block; }
+#tip i { font-style:normal; opacity:.75; display:block; }
+details { margin-top:14px; }
+summary { cursor:pointer; padding:6px 0; font-weight:700; }
+.scroll { overflow-x:auto; }
+.tall { max-height:340px; overflow-y:auto; border:1px solid var(--grid); }
+table { border-collapse:collapse; width:100%; font-size:12.5px; }
+th, td { padding:5px 8px; border-bottom:1px solid var(--grid); text-align:right; white-space:nowrap; }
+th:first-child, td:first-child { text-align:left; }
+thead th { border-bottom:1.5px solid var(--ink); position:sticky; top:0; background:var(--bg); }
+footer { margin-top:44px; padding-top:14px; border-top:1.5px solid var(--ink); color:var(--muted); font-size:12.5px; max-width:70ch; }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <pattern id="hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line class="hatchline" x1="0" y1="0" x2="0" y2="6"/></pattern>
+  <pattern id="hatchsoft" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line class="hatchline soft" x1="0" y1="0" x2="0" y2="8"/></pattern>
+</defs></svg>
+<main>
+  <h1>FCC Friends &amp; Family Show</h1>
+  <p class="sub">Occupancy as observed by a fixed stream camera. November 14–15, 2026, at 100 N 3rd St.</p>
+  <p class="intro" id="intro"></p>
+  <ul class="head" id="head"></ul>
+
+  <h2>Persons in frame</h2>
+  <p class="note">One point per sample, 5 minutes apart. Breaks in the line are gaps between broadcasts. Point at the chart for each sample.</p>
+  <h3>Saturday, November 14</h3><div class="chart" id="tl1"></div>
+  <h3>Sunday, November 15</h3><div class="chart" id="tl2"></div>
+
+  <h2>Mean persons in frame by hour</h2>
+  <p class="note">The bar is the mean for the hour beginning at the time shown. The line spans the lowest to highest sample in the hour.</p>
+  <h3>Saturday, November 14</h3><div class="chart" id="hr1"></div>
+  <h3>Sunday, November 15</h3><div class="chart" id="hr2"></div>
+
+  <h2>Distribution of counts</h2>
+  <p class="note">Both days, lights-on samples. Number of samples at each count of persons in frame; broken lines divide the crowd levels.</p>
+  <div class="chart" id="hist"></div>
+  <h3>Share of samples at each crowd level</h3><div class="chart" id="lev"></div>
+
+  <h2>Tables</h2>
+  <div class="scroll"><table id="stats"></table></div>
+  <p class="note">Person-hours are the sum of each count multiplied by the 5-minute sampling interval.</p>
+  <details><summary>Every sample</summary><div class="scroll tall"><table id="all"></table></div></details>
+
+  <footer>Counts are persons in view of the camera at an instant, not visitors. Crowded frames are probably low by 2 or 3. Times are Eastern Standard.</footer>
+</main>
+<div id="tip" role="status"></div>
+<script>
+const D = {"samples":[{"ms":1794672341000,"lab":"11:05 AM","n":5,"on":true,"day":1,"level":"moderate","conf":"medium","dogs":0},{"ms":1794672641000,"lab":"11:10 AM","n":6,"on":true,"day":1,"level":"moderate","conf":"medium","dogs":0},{"ms":1794672941000,"lab":"11:15 AM","n":5,"on":true,"day":1,"level":"moderate","conf":"high","dogs":0},{"ms":1794673586381,"lab":"11:26 AM","n":1,"on":true,"day":1,"level":"sparse","conf":"medium","dogs":0},{"ms":1794673886381,"lab":"11:31 AM","n":5,"on":true,"day":1,"level":"moderate","conf":"high","dogs":0},{"ms":1794674186381,"lab":"11:36 AM","n":3,"on":true,"day":1,"level":"sparse","conf":"high","dogs":0},{"ms":1794674486381,"lab":"11:41 AM","n":3,"on":true,"day":1,"level":"sparse","conf":"high","dogs":0},{"ms":1794674786381,"lab":"11:46 AM","n":2,"on":true,"day":1,"level":"sparse","conf":"medium","dogs":0},{"ms":1794675086381,"lab":"11:51 AM","n":2,"on":true,"day":1,"level":"sparse","conf":"high","dogs":0},{"ms":1794675386381,"lab":"11:56 AM","n":4,"on":true,"day":1,"level":"moderate","conf":"high","dogs":0},{"ms":1794675686381,"lab":"12:01 PM","n":4,"on":true,"day":1,"level":"moderate","conf":"high","dogs":0},{"ms":1794675986381,"lab":"12:06 PM","n":2,"on":true,"day":1,"level":"sparse","conf":"high","dogs":0},{"ms":1794676286381,"lab":"12:11 PM","n":3,"on":true,"day":1,"level":"sparse","conf":"high","dogs":0},{"ms":1794676586381,"lab":"12:16 PM","n":4,"on":true,"day":1,"level":"moderate","conf":"high","dogs":0},{"ms":1794676886381,"lab":"12:21 PM","n":7,"on":true,"day":1,"level":"moderate","conf":"medium","dogs":0},{"ms":1794677186381,"lab":"12:26 PM","n":6,"on":true,"day":1,"level":"moderate","conf":"medium","dogs":0},{"ms":1794677486381,"lab":"12:31 PM","n":5,"on":true,"day":1,"level":"moderate","conf":"high","dogs":0},{"ms":1794677786381,"lab":"12:36 PM","n":4,"on":true,"day":1,"level":"moderate","conf":"medium","dogs":0},{"ms":1794678086381,"lab":"12:41 PM","n":5,"on":true,"day":1,"level":"moderate","conf":"medium","dogs":0},{"ms":1794678386381,"lab":"12:46 PM","n":4,"on":true,"day":1,"level":"moderate","conf":"high","dogs":0},{"ms":1794678686381,"lab":"12:51 PM","n":5,"on":true,"day":1,"level":"moderate","conf":"medium","dogs":0},{"ms":1794678986381,"lab":"12:56 PM","n":7,"on":true,"day":1,"level":"moderate","conf":"medium","dogs":0},{"ms":1794679286381,"lab":"1:01 PM","n":7,"on":true,"day":1,"level":"moderate","conf":"high","dogs":0},{"ms":1794679586381,"lab":"1:06 PM","n":4,"on":true,"day":1,"level":"moderate","conf":"medium","dogs":0},{"ms":1794679886381,"lab":"1:11 PM","n":3,"on":true,"day":1,"level":"sparse","conf":"medium","dogs":0},{"ms":1794680186381,"lab":"1:16 PM","n":4,"on":true,"day":1,"level":"moderate","conf":"medium","dogs":0},{"ms":1794680486381,"lab":"1:21 PM","n":7,"on":true,"day":1,"level":"moderate","conf":"medium","dogs":0},{"ms":1794680786381,"lab":"1:26 PM","n":10,"on":true,"day":1,"level":"busy","conf":"medium","dogs":0},{"ms":1794681086381,"lab":"1:31 PM","n":8,"on":true,"day":1,"level":"moderate","conf":"medium","dogs":0},{"ms":1794681386381,"lab":"1:36 PM","n":8,"on":true,"day":1,"level":"moderate","conf":"medium","dogs":0},{"ms":1794681686381,"lab":"1:41 PM","n":7,"on":true,"day":1,"level":"moderate","conf":"medium","dogs":0},{"ms":1794681986381,"lab":"1:46 PM","n":9,"on":true,"day":1,"level":"busy","conf":"medium","dogs":0},{"ms":1794682286381,"lab":"1:51 PM","n":4,"on":true,"day":1,"level":"moderate","conf":"medium","dogs":0},{"ms":1794682586381,"lab":"1:56 PM","n":5,"on":true,"day":1,"level":"moderate","conf":"high","dogs":0},{"ms":1794682886381,"lab":"2:01 PM","n":5,"on":true,"day":1,"level":"moderate","conf":"high","dogs":0},{"ms":1794683186381,"lab":"2:06 PM","n":4,"on":true,"day":1,"level":"moderate","conf":"medium","dogs":0},{"ms":1794683486381,"lab":"2:11 PM","n":6,"on":true,"day":1,"level":"moderate","conf":"medium","dogs":0},{"ms":1794683786381,"lab":"2:16 PM","n":6,"on":true,"day":1,"level":"moderate","conf":"medium","dogs":0},{"ms":1794684086381,"lab":"2:21 PM","n":6,"on":true,"day":1,"level":"moderate","conf":"medium","dogs":0},{"ms":1794684386381,"lab":"2:26 PM","n":6,"on":true,"day":1,"level":"moderate","conf":"medium","dogs":0},{"ms":1794684686381,"lab":"2:31 PM","n":8,"on":true,"day":1,"level":"moderate","conf":"medium","dogs":0},{"ms":1794684986381,"lab":"2:36 PM","n":9,"on":true,"day":1,"level":"busy","conf":"medium","dogs":0},{"ms":1794685286381,"lab":"2:41 PM","n":10,"on":true,"day":1,"level":"busy","conf":"medium","dogs":0},{"ms":1794685586381,"lab":"2:46 PM","n":9,"on":true,"day":1,"level":"busy","conf":"medium","dogs":0},{"ms":1794685886381,"lab":"2:51 PM","n":12,"on":true,"day":1,"level":"busy","conf":"medium","dogs":0},{"ms":1794686186381,"lab":"2:56 PM","n":11,"on":true,"day":1,"level":"busy","conf":"low","dogs":0},{"ms":1794686486381,"lab":"3:01 PM","n":8,"on":true,"day":1,"level":"moderate","conf":"medium","dogs":1},{"ms":1794686786381,"lab":"3:06 PM","n":8,"on":true,"day":1,"level":"moderate","conf":"medium","dogs":1},{"ms":1794687086381,"lab":"3:11 PM","n":12,"on":true,"day":1,"level":"busy","conf":"low","dogs":0},{"ms":1794687386381,"lab":"3:16 PM","n":8,"on":true,"day":1,"level":"moderate","conf":"high","dogs":0},{"ms":1794687686381,"lab":"3:21 PM","n":9,"on":true,"day":1,"level":"busy","conf":"medium","dogs":0},{"ms":1794687986381,"lab":"3:26 PM","n":15,"on":true,"day":1,"level":"packed","conf":"low","dogs":1},{"ms":1794688286381,"lab":"3:31 PM","n":12,"on":true,"day":1,"level":"busy","conf":"medium","dogs":1},{"ms":1794688586381,"lab":"3:36 PM","n":9,"on":true,"day":1,"level":"busy","conf":"medium","dogs":1},{"ms":1794688886381,"lab":"3:41 PM","n":9,"on":true,"day":1,"level":"busy","conf":"low","dogs":0},{"ms":1794689186381,"lab":"3:46 PM","n":4,"on":true,"day":1,"level":"moderate","conf":"high","dogs":0},{"ms":1794689486381,"lab":"3:51 PM","n":7,"on":true,"day":1,"level":"moderate","conf":"high","dogs":0},{"ms":1794689786381,"lab":"3:56 PM","n":11,"on":true,"day":1,"level":"busy","conf":"medium","dogs":0},{"ms":1794690086381,"lab":"4:01 PM","n":7,"on":true,"day":1,"level":"moderate","conf":"medium","dogs":0},{"ms":1794690386381,"lab":"4:06 PM","n":7,"on":true,"day":1,"level":"moderate","conf":"low","dogs":0},{"ms":1794690686381,"lab":"4:11 PM","n":11,"on":true,"day":1,"level":"busy","conf":"medium","dogs":0},{"ms":1794690986381,"lab":"4:16 PM","n":11,"on":true,"day":1,"level":"busy","conf":"medium","dogs":0},{"ms":1794691286381,"lab":"4:21 PM","n":15,"on":true,"day":1,"level":"packed","conf":"low","dogs":0},{"ms":1794691586381,"lab":"4:26 PM","n":9,"on":true,"day":1,"level":"busy","conf":"medium","dogs":0},{"ms":1794691886381,"lab":"4:31 PM","n":13,"on":true,"day":1,"level":"busy","conf":"low","dogs":1},{"ms":1794692471291,"lab":"4:41 PM","n":11,"on":true,"day":1,"level":"busy","conf":"medium","dogs":1},{"ms":1794692771291,"lab":"4:46 PM","n":10,"on":true,"day":1,"level":"busy","conf":"low","dogs":0},{"ms":1794693071291,"lab":"4:51 PM","n":6,"on":true,"day":1,"level":"moderate","conf":"high","dogs":0},{"ms":1794693371291,"lab":"4:56 PM","n":6,"on":true,"day":1,"level":"moderate","conf":"low","dogs":0},{"ms":1794693671291,"lab":"5:01 PM","n":2,"on":true,"day":1,"level":"sparse","conf":"medium","dogs":0},{"ms":1794693971291,"lab":"5:06 PM","n":6,"on":true,"day":1,"level":"moderate","conf":"high","dogs":0},{"ms":1794694434127,"lab":"5:13 PM","n":7,"on":true,"day":1,"level":"moderate","conf":"medium","dogs":0},{"ms":1794694734127,"lab":"5:18 PM","n":7,"on":true,"day":1,"level":"moderate","conf":"medium","dogs":0},{"ms":1794695034127,"lab":"5:23 PM","n":10,"on":true,"day":1,"level":"busy","conf":"medium","dogs":0},{"ms":1794695334127,"lab":"5:28 PM","n":11,"on":true,"day":1,"level":"busy","conf":"medium","dogs":0},{"ms":1794695634127,"lab":"5:33 PM","n":8,"on":true,"day":1,"level":"moderate","conf":"high","dogs":0},{"ms":1794695934127,"lab":"5:38 PM","n":13,"on":true,"day":1,"level":"busy","conf":"medium","dogs":0},{"ms":1794696234127,"lab":"5:43 PM","n":12,"on":true,"day":1,"level":"busy","conf":"medium","dogs":0},{"ms":1794696534127,"lab":"5:48 PM","n":16,"on":true,"day":1,"level":"packed","conf":"medium","dogs":0},{"ms":1794696834127,"lab":"5:53 PM","n":20,"on":true,"day":1,"level":"packed","conf":"low","dogs":0},{"ms":1794697134127,"lab":"5:58 PM","n":15,"on":true,"day":1,"level":"packed","conf":"low","dogs":0},{"ms":1794697434127,"lab":"6:03 PM","n":16,"on":true,"day":1,"level":"packed","conf":"low","dogs":0},{"ms":1794697734127,"lab":"6:08 PM","n":16,"on":true,"day":1,"level":"packed","conf":"medium","dogs":0},{"ms":1794698034127,"lab":"6:13 PM","n":19,"on":true,"day":1,"level":"packed","conf":"medium","dogs":0},{"ms":1794698334127,"lab":"6:18 PM","n":15,"on":true,"day":1,"level":"packed","conf":"medium","dogs":0},{"ms":1794698634127,"lab":"6:23 PM","n":19,"on":true,"day":1,"level":"packed","conf":"medium","dogs":0},{"ms":1794698934127,"lab":"6:28 PM","n":19,"on":true,"day":1,"level":"packed","conf":"medium","dogs":0},{"ms":1794699234127,"lab":"6:33 PM","n":20,"on":true,"day":1,"level":"packed","conf":"low","dogs":0},{"ms":1794699534127,"lab":"6:38 PM","n":20,"on":true,"day":1,"level":"packed","conf":"low","dogs":0},{"ms":1794699834127,"lab":"6:43 PM","n":19,"on":true,"day":1,"level":"packed","conf":"medium","dogs":0},{"ms":1794700134127,"lab":"6:48 PM","n":15,"on":true,"day":1,"level":"packed","conf":"low","dogs":0},{"ms":1794700434127,"lab":"6:53 PM","n":19,"on":true,"day":1,"level":"packed","conf":"medium","dogs":0},{"ms":1794700734127,"lab":"6:58 PM","n":18,"on":true,"day":1,"level":"packed","conf":"medium","dogs":0},{"ms":1794701034127,"lab":"7:03 PM","n":13,"on":true,"day":1,"level":"busy","conf":"medium","dogs":0},{"ms":1794701334127,"lab":"7:08 PM","n":16,"on":true,"day":1,"level":"packed","conf":"medium","dogs":0},{"ms":1794701634127,"lab":"7:13 PM","n":11,"on":true,"day":1,"level":"busy","conf":"medium","dogs":0},{"ms":1794701934127,"lab":"7:18 PM","n":18,"on":true,"day":1,"level":"packed","conf":"medium","dogs":0},{"ms":1794702234127,"lab":"7:23 PM","n":14,"on":true,"day":1,"level":"busy","conf":"medium","dogs":0},{"ms":1794702534127,"lab":"7:28 PM","n":19,"on":true,"day":1,"level":"packed","conf":"medium","dogs":0},{"ms":1794702834127,"lab":"7:33 PM","n":23,"on":true,"day":1,"level":"packed","conf":"low","dogs":0},{"ms":1794703134127,"lab":"7:38 PM","n":20,"on":true,"day":1,"level":"packed","conf":"low","dogs":0},{"ms":1794703434127,"lab":"7:43 PM","n":18,"on":true,"day":1,"level":"packed","conf":"medium","dogs":0},{"ms":1794703734127,"lab":"7:48 PM","n":18,"on":true,"day":1,"level":"packed","conf":"medium","dogs":0},{"ms":1794704034127,"lab":"7:53 PM","n":22,"on":true,"day":1,"level":"packed","conf":"low","dogs":0},{"ms":1794704334127,"lab":"7:58 PM","n":19,"on":true,"day":1,"level":"packed","conf":"medium","dogs":0},{"ms":1794704634127,"lab":"8:03 PM","n":12,"on":true,"day":1,"level":"busy","conf":"medium","dogs":0},{"ms":1794704934127,"lab":"8:08 PM","n":15,"on":true,"day":1,"level":"packed","conf":"medium","dogs":0},{"ms":1794705234127,"lab":"8:13 PM","n":13,"on":true,"day":1,"level":"busy","conf":"medium","dogs":0},{"ms":1794705534127,"lab":"8:18 PM","n":14,"on":true,"day":1,"level":"busy","conf":"medium","dogs":0},{"ms":1794705834127,"lab":"8:23 PM","n":20,"on":true,"day":1,"level":"packed","conf":"medium","dogs":0},{"ms":1794706134127,"lab":"8:28 PM","n":18,"on":true,"day":1,"level":"packed","conf":"medium","dogs":0},{"ms":1794706434127,"lab":"8:33 PM","n":16,"on":true,"day":1,"level":"packed","conf":"medium","dogs":0},{"ms":1794706734127,"lab":"8:38 PM","n":14,"on":true,"day":1,"level":"busy","conf":"medium","dogs":0},{"ms":1794707034127,"lab":"8:43 PM","n":16,"on":true,"day":1,"level":"packed","conf":"medium","dogs":0},{"ms":1794707334127,"lab":"8:48 PM","n":14,"on":true,"day":1,"level":"busy","conf":"medium","dogs":0},{"ms":1794707634127,"lab":"8:53 PM","n":15,"on":true,"day":1,"level":"packed","conf":"medium","dogs":0},{"ms":1794707934127,"lab":"8:58 PM","n":15,"on":true,"day":1,"level":"packed","conf":"medium","dogs":0},{"ms":1794708234127,"lab":"9:03 PM","n":13,"on":true,"day":1,"level":"busy","conf":"medium","dogs":0},{"ms":1794708534127,"lab":"9:08 PM","n":11,"on":true,"day":1,"level":"busy","conf":"medium","dogs":0},{"ms":1794708834127,"lab":"9:13 PM","n":9,"on":true,"day":1,"level":"busy","conf":"medium","dogs":0},{"ms":1794709134127,"lab":"9:18 PM","n":9,"on":true,"day":1,"level":"busy","conf":"high","dogs":0},{"ms":1794709434127,"lab":"9:23 PM","n":6,"on":true,"day":1,"level":"moderate","conf":"high","dogs":0},{"ms":1794709734127,"lab":"9:28 PM","n":6,"on":true,"day":1,"level":"moderate","conf":"high","dogs":0},{"ms":1794710034127,"lab":"9:33 PM","n":5,"on":true,"day":1,"level":"moderate","conf":"high","dogs":0},{"ms":1794710334127,"lab":"9:38 PM","n":4,"on":true,"day":1,"level":"moderate","conf":"high","dogs":0},{"ms":1794710634127,"lab":"9:43 PM","n":4,"on":true,"day":1,"level":"moderate","conf":"medium","dogs":0},{"ms":1794710934127,"lab":"9:48 PM","n":3,"on":false,"day":1,"level":"sparse","conf":"medium","dogs":0},{"ms":1794711234127,"lab":"9:53 PM","n":0,"on":false,"day":1,"level":"empty","conf":"high","dogs":0},{"ms":1794711534127,"lab":"9:58 PM","n":0,"on":false,"day":1,"level":"empty","conf":"high","dogs":0},{"ms":1794711834127,"lab":"10:03 PM","n":0,"on":false,"day":1,"level":"empty","conf":"high","dogs":0},{"ms":1794712134127,"lab":"10:08 PM","n":0,"on":false,"day":1,"level":"empty","conf":"high","dogs":0},{"ms":1794712434127,"lab":"10:13 PM","n":0,"on":false,"day":1,"level":"empty","conf":"high","dogs":0},{"ms":1794712734127,"lab":"10:18 PM","n":0,"on":false,"day":1,"level":"empty","conf":"high","dogs":0},{"ms":1794713034127,"lab":"10:23 PM","n":0,"on":false,"day":1,"level":"empty","conf":"high","dogs":0},{"ms":1794713334127,"lab":"10:28 PM","n":0,"on":false,"day":1,"level":"empty","conf":"high","dogs":0},{"ms":1794713634127,"lab":"10:33 PM","n":0,"on":false,"day":1,"level":"empty","conf":"high","dogs":0},{"ms":1794713934127,"lab":"10:38 PM","n":0,"on":false,"day":1,"level":"empty","conf":"high","dogs":0},{"ms":1794714234127,"lab":"10:43 PM","n":0,"on":false,"day":1,"level":"empty","conf":"high","dogs":0},{"ms":1794714534127,"lab":"10:48 PM","n":0,"on":false,"day":1,"level":"empty","conf":"high","dogs":0},{"ms":1794714834127,"lab":"10:53 PM","n":0,"on":false,"day":1,"level":"empty","conf":"high","dogs":0},{"ms":1794715134127,"lab":"10:58 PM","n":0,"on":false,"day":1,"level":"empty","conf":"high","dogs":0},{"ms":1794715434127,"lab":"11:03 PM","n":0,"on":false,"day":1,"level":"empty","conf":"high","dogs":0},{"ms":1794715734127,"lab":"11:08 PM","n":0,"on":false,"day":1,"level":"empty","conf":"high","dogs":0},{"ms":1794716034127,"lab":"11:13 PM","n":0,"on":false,"day":1,"level":"empty","conf":"high","dogs":0},{"ms":1794716334127,"lab":"11:18 PM","n":0,"on":false,"day":1,"level":"empty","conf":"high","dogs":0},{"ms":1794716634127,"lab":"11:23 PM","n":0,"on":false,"day":1,"level":"empty","conf":"high","dogs":0},{"ms":1794716934127,"lab":"11:28 PM","n":0,"on":false,"day":1,"level":"empty","conf":"high","dogs":0},{"ms":1794717234127,"lab":"11:33 PM","n":0,"on":false,"day":1,"level":"empty","conf":"high","dogs":0},{"ms":1794717534127,"lab":"11:38 PM","n":0,"on":false,"day":1,"level":"empty","conf":"high","dogs":0},{"ms":1794717834127,"lab":"11:43 PM","n":0,"on":false,"day":1,"level":"empty","conf":"high","dogs":0},{"ms":1794718134127,"lab":"11:48 PM","n":0,"on":false,"day":1,"level":"empty","conf":"high","dogs":0},{"ms":1794718434127,"lab":"11:53 PM","n":0,"on":false,"day":1,"level":"empty","conf":"high","dogs":0},{"ms":1794718734127,"lab":"11:58 PM","n":0,"on":false,"day":1,"level":"empty","conf":"high","dogs":0},{"ms":1794719034127,"lab":"12:03 AM","n":0,"on":false,"day":1,"level":"empty","conf":"high","dogs":0},{"ms":1794719334127,"lab":"12:08 AM","n":0,"on":false,"day":1,"level":"empty","conf":"high","dogs":0},{"ms":1794719634127,"lab":"12:13 AM","n":0,"on":false,"day":1,"level":"empty","conf":"high","dogs":0},{"ms":1794719934127,"lab":"12:18 AM","n":0,"on":false,"day":1,"level":"empty","conf":"high","dogs":0},{"ms":1794720234127,"lab":"12:23 AM","n":0,"on":false,"day":1,"level":"empty","conf":"high","dogs":0},{"ms":1794720534127,"lab":"12:28 AM","n":0,"on":false,"day":1,"level":"empty","conf":"high","dogs":0},{"ms":1794720834127,"lab":"12:33 AM","n":0,"on":false,"day":1,"level":"empty","conf":"high","dogs":0},{"ms":1794721134127,"lab":"12:38 AM","n":0,"on":false,"day":1,"level":"empty","conf":"medium","dogs":0},{"ms":1794721434127,"lab":"12:43 AM","n":0,"on":false,"day":1,"level":"empty","conf":"medium","dogs":0},{"ms":1794721734127,"lab":"12:48 AM","n":0,"on":false,"day":1,"level":"empty","conf":"low","dogs":0},{"ms":1794722034127,"lab":"12:53 AM","n":0,"on":false,"day":1,"level":"empty","conf":"low","dogs":0},{"ms":1794722334127,"lab":"12:58 AM","n":0,"on":false,"day":1,"level":"empty","conf":"low","dogs":0},{"ms":1794722634127,"lab":"1:03 AM","n":0,"on":false,"day":1,"level":"empty","conf":"low","dogs":0},{"ms":1794761578354,"lab":"11:52 AM","n":8,"on":true,"day":2,"level":"moderate","conf":"medium","dogs":0},{"ms":1794761878354,"lab":"11:57 AM","n":7,"on":true,"day":2,"level":"moderate","conf":"high","dogs":0},{"ms":1794762178354,"lab":"12:02 PM","n":8,"on":true,"day":2,"level":"moderate","conf":"high","dogs":0},{"ms":1794762478354,"lab":"12:07 PM","n":10,"on":true,"day":2,"level":"busy","conf":"high","dogs":0},{"ms":1794762778354,"lab":"12:12 PM","n":14,"on":true,"day":2,"level":"busy","conf":"medium","dogs":1},{"ms":1794763078354,"lab":"12:17 PM","n":10,"on":true,"day":2,"level":"busy","conf":"medium","dogs":0},{"ms":1794763378354,"lab":"12:22 PM","n":13,"on":true,"day":2,"level":"busy","conf":"medium","dogs":0},{"ms":1794763678354,"lab":"12:27 PM","n":14,"on":true,"day":2,"level":"busy","conf":"medium","dogs":1},{"ms":1794763978354,"lab":"12:32 PM","n":10,"on":true,"day":2,"level":"busy","conf":"low","dogs":0},{"ms":1794764278354,"lab":"12:37 PM","n":11,"on":true,"day":2,"level":"busy","conf":"medium","dogs":0},{"ms":1794764578354,"lab":"12:42 PM","n":10,"on":true,"day":2,"level":"busy","conf":"medium","dogs":0},{"ms":1794764878354,"lab":"12:47 PM","n":19,"on":true,"day":2,"level":"packed","conf":"low","dogs":0},{"ms":1794765178354,"lab":"12:52 PM","n":12,"on":true,"day":2,"level":"busy","conf":"low","dogs":0},{"ms":1794765478354,"lab":"12:57 PM","n":18,"on":true,"day":2,"level":"packed","conf":"medium","dogs":0},{"ms":1794765778354,"lab":"1:02 PM","n":10,"on":true,"day":2,"level":"busy","conf":"medium","dogs":0},{"ms":1794766078354,"lab":"1:07 PM","n":13,"on":true,"day":2,"level":"busy","conf":"medium","dogs":0},{"ms":1794766378354,"lab":"1:12 PM","n":11,"on":true,"day":2,"level":"busy","conf":"medium","dogs":0},{"ms":1794766678354,"lab":"1:17 PM","n":13,"on":true,"day":2,"level":"busy","conf":"medium","dogs":0},{"ms":1794766978354,"lab":"1:22 PM","n":9,"on":true,"day":2,"level":"busy","conf":"medium","dogs":0},{"ms":1794767278354,"lab":"1:27 PM","n":11,"on":true,"day":2,"level":"busy","conf":"medium","dogs":0},{"ms":1794767578354,"lab":"1:32 PM","n":11,"on":true,"day":2,"level":"busy","conf":"medium","dogs":0},{"ms":1794767878354,"lab":"1:37 PM","n":11,"on":true,"day":2,"level":"busy","conf":"medium","dogs":0},{"ms":1794768178354,"lab":"1:42 PM","n":9,"on":true,"day":2,"level":"busy","conf":"low","dogs":0},{"ms":1794768478354,"lab":"1:47 PM","n":10,"on":true,"day":2,"level":"busy","conf":"medium","dogs":0},{"ms":1794768778354,"lab":"1:52 PM","n":11,"on":true,"day":2,"level":"busy","conf":"medium","dogs":0},{"ms":1794769078354,"lab":"1:57 PM","n":7,"on":true,"day":2,"level":"moderate","conf":"high","dogs":0},{"ms":1794769378354,"lab":"2:02 PM","n":10,"on":true,"day":2,"level":"busy","conf":"medium","dogs":0},{"ms":1794769678354,"lab":"2:07 PM","n":8,"on":true,"day":2,"level":"moderate","conf":"medium","dogs":0},{"ms":1794769978354,"lab":"2:12 PM","n":8,"on":true,"day":2,"level":"moderate","conf":"medium","dogs":0},{"ms":1794770278354,"lab":"2:17 PM","n":11,"on":true,"day":2,"level":"busy","conf":"medium","dogs":0},{"ms":1794770578354,"lab":"2:22 PM","n":10,"on":true,"day":2,"level":"busy","conf":"medium","dogs":0},{"ms":1794770878354,"lab":"2:27 PM","n":11,"on":true,"day":2,"level":"busy","conf":"medium","dogs":0},{"ms":1794771178354,"lab":"2:32 PM","n":10,"on":true,"day":2,"level":"busy","conf":"medium","dogs":0},{"ms":1794771478354,"lab":"2:37 PM","n":11,"on":true,"day":2,"level":"busy","conf":"medium","dogs":0},{"ms":1794771778354,"lab":"2:42 PM","n":11,"on":true,"day":2,"level":"busy","conf":"high","dogs":0},{"ms":1794772078354,"lab":"2:47 PM","n":9,"on":true,"day":2,"level":"busy","conf":"medium","dogs":0},{"ms":1794772378354,"lab":"2:52 PM","n":8,"on":true,"day":2,"level":"moderate","conf":"medium","dogs":0},{"ms":1794772678354,"lab":"2:57 PM","n":7,"on":true,"day":2,"level":"moderate","conf":"high","dogs":0},{"ms":1794772978354,"lab":"3:02 PM","n":7,"on":true,"day":2,"level":"moderate","conf":"medium","dogs":0},{"ms":1794773278354,"lab":"3:07 PM","n":7,"on":true,"day":2,"level":"moderate","conf":"medium","dogs":0},{"ms":1794773578354,"lab":"3:12 PM","n":6,"on":true,"day":2,"level":"moderate","conf":"medium","dogs":0},{"ms":1794773878354,"lab":"3:17 PM","n":8,"on":true,"day":2,"level":"moderate","conf":"medium","dogs":0},{"ms":1794774178354,"lab":"3:22 PM","n":9,"on":true,"day":2,"level":"busy","conf":"medium","dogs":0},{"ms":1794774478354,"lab":"3:27 PM","n":6,"on":true,"day":2,"level":"moderate","conf":"medium","dogs":0},{"ms":1794774778354,"lab":"3:32 PM","n":10,"on":true,"day":2,"level":"busy","conf":"medium","dogs":0},{"ms":1794775078354,"lab":"3:37 PM","n":4,"on":true,"day":2,"level":"moderate","conf":"low","dogs":0}],"stats":[{"label":"Sat. Nov. 14","n":126,"mean":"10.2","sd":"5.5","min":1,"q1":"6","med":"9","q3":"15","max":23,"tmax":"7:33 PM","ph":"107"},{"label":"Sun. Nov. 15","n":46,"mean":"10.0","sd":"2.8","min":4,"q1":"8","med":"10","q3":"11","max":19,"tmax":"12:47 PM","ph":"38"},{"label":"Both days","n":172,"mean":"10.1","sd":"4.9","min":1,"q1":"6","med":"10","q3":"13","max":23,"tmax":"7:33 PM Sat.","ph":"145"}],"head":[["23","Most persons in frame (7:33 PM, Saturday)"],["10.1","Mean persons in frame, gallery lights on"],["10","Median persons in frame"],["6 PM","Busiest hour, Saturday (mean 17.9 persons)"],["58%","Of samples had 9 or more persons in frame"],["145","Person-hours in frame"]],"nAll":212,"nOn":172};
+const NS = "http://www.w3.org/2000/svg";
+const on = D.samples.filter(s => s.on);
+const DAY = {1: "Saturday", 2: "Sunday"};
+const LEVELS = [["Sparse", 1, 3], ["Moderate", 4, 8], ["Busy", 9, 14], ["Packed", 15, 999]];
+const mean = a => a.reduce((x, y) => x + y, 0) / a.length;
+const cap = s => s ? s[0].toUpperCase() + s.slice(1) : "";
+const fmtHour = h => (h % 12 || 12) + (h < 12 ? " AM" : " PM");
+const localHour = ms => new Date(ms - 5 * 3600e3).getUTCHours();   // Eastern Standard, UTC-5
+function el(tag, attrs, parent, text) {
+  const e = document.createElementNS(NS, tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  if (text != null) e.textContent = text;
+  if (parent) parent.appendChild(e);
+  return e;
+}
+function svgIn(box, W, H) { box.textContent = ""; return el("svg", {viewBox: `0 0 ${W} ${H}`, height: H, role: "img"}, box); }
+const tip = document.getElementById("tip");
+function showTip(html, x, y) {
+  tip.innerHTML = html; tip.classList.add("on");
+  const r = tip.getBoundingClientRect(), vw = document.documentElement.clientWidth;
+  let left = x + 14, top = y - r.height - 12;
+  if (left + r.width > vw - 8) left = x - r.width - 14;
+  if (left < 8) left = 8;
+  if (top < 8) top = y + 18;
+  tip.style.left = left + "px"; tip.style.top = top + "px";
+}
+function hideTip() { tip.classList.remove("on"); }
+
+function timeline(id, day) {
+  const box = document.getElementById(id), S = D.samples.filter(s => s.day === day);
+  const W = box.clientWidth, H = Math.round(Math.max(250, Math.min(340, W * 0.45))), m = {l: 30, r: 12, t: 30, b: 26};
+  const svg = svgIn(box, W, H), x0 = S[0].ms, x1 = S[S.length - 1].ms, pad = (x1 - x0) * 0.015, YMAX = 25;
+  const X = ms => m.l + (ms - x0 + pad) / (x1 - x0 + 2 * pad) * (W - m.l - m.r);
+  const Y = n => H - m.b - n / YMAX * (H - m.t - m.b);
+  for (let v = 0; v <= YMAX; v += 5) {
+    el("line", {class: v ? "grid" : "axis", x1: m.l, x2: W - m.r, y1: Y(v), y2: Y(v)}, svg);
+    el("text", {class: "m", x: m.l - 6, y: Y(v) + 4, "text-anchor": "end"}, svg, v);
+  }
+  const hours = (x1 - x0) / 3600e3, step = Math.max(1, Math.ceil(hours * 46 / (W - m.l - m.r)));
+  for (let t = Math.ceil(x0 / 3600e3) * 3600e3, i = 0; t <= x1; t += 3600e3, i++) {
+    el("line", {class: "axis", x1: X(t), x2: X(t), y1: Y(0), y2: Y(0) + (i % step ? 3 : 6)}, svg);
+    if (i % step === 0) el("text", {class: "m", x: X(t), y: H - 6, "text-anchor": "middle"}, svg, fmtHour(localHour(t)));
+  }
+  const off = S.filter(s => !s.on);
+  if (off.length) {
+    const a = X(off[0].ms), b = X(off[off.length - 1].ms);
+    el("rect", {x: a, y: Y(YMAX), width: b - a, height: Y(0) - Y(YMAX), fill: "url(#hatchsoft)"}, svg);
+    el("text", {class: "halo", x: (a + b) / 2, y: Y(15), "text-anchor": "middle"}, svg, b - a > 150 ? "Lights off (not counted)" : "Lights off");
+  }
+  const lit = S.filter(s => s.on), mu = mean(lit.map(s => s.n));
+  el("line", {class: "dash", x1: m.l, x2: W - m.r, y1: Y(mu), y2: Y(mu)}, svg);
+  let d = "", prev = null;
+  for (const s of lit) { d += (prev && s.ms - prev.ms <= 420e3 ? "L" : "M") + X(s.ms).toFixed(1) + " " + Y(s.n).toFixed(1); prev = s; }
+  el("path", {class: "line", d}, svg);
+  const r = Math.max(1.8, Math.min(3.5, (W - m.l - m.r) / S.length * 0.38));
+  for (const s of lit) el("circle", {class: "dot", cx: X(s.ms), cy: Y(s.n), r}, svg);
+  el("text", {class: "halo", x: off.length ? m.l + 6 : W - m.r - 4, y: Y(mu) - 6, "text-anchor": off.length ? "start" : "end"}, svg, "Mean " + mu.toFixed(1));
+  const pk = lit.reduce((a, b) => b.n > a.n ? b : a);
+  el("text", {class: "b halo", x: Math.max(m.l + 60, Math.min(W - m.r - 60, X(pk.ms))), y: Y(pk.n) - 10, "text-anchor": "middle"}, svg, `Max ${pk.n}, ${pk.lab}`);
+  const cross = el("line", {class: "cross", y1: Y(YMAX), y2: Y(0), visibility: "hidden"}, svg);
+  const focus = el("circle", {class: "focus", r: 5, visibility: "hidden"}, svg);
+  const hit = el("rect", {class: "hit", x: m.l, y: m.t - 20, width: W - m.l - m.r, height: H - m.t - m.b + 20}, svg);
+  const move = e => {
+    const bb = svg.getBoundingClientRect(), px = (e.clientX - bb.left) * W / bb.width;
+    let best = S[0]; for (const s of S) if (Math.abs(X(s.ms) - px) < Math.abs(X(best.ms) - px)) best = s;
+    cross.setAttribute("x1", X(best.ms)); cross.setAttribute("x2", X(best.ms)); cross.setAttribute("visibility", "visible");
+    focus.setAttribute("cx", X(best.ms)); focus.setAttribute("cy", Y(best.n)); focus.setAttribute("visibility", "visible");
+    const body = best.on ? `<b>${best.n} ${best.n === 1 ? "person" : "persons"} in frame</b>${cap(best.level)}; counting confidence ${best.conf}` +
+      (best.dogs ? `<br>${best.dogs} ${best.dogs === 1 ? "dog" : "dogs"} in frame` : "") : `<b>Lights off</b>Not included in statistics`;
+    showTip(`<i>${DAY[day]} ${best.lab}</i>${body}`, bb.left + X(best.ms) * bb.width / W, bb.top + Y(best.n) * bb.height / H);
+  };
+  hit.addEventListener("pointermove", move); hit.addEventListener("pointerdown", move);
+  hit.addEventListener("pointerleave", () => { cross.setAttribute("visibility", "hidden"); focus.setAttribute("visibility", "hidden"); hideTip(); });
+}
+
+function rows(id, items, xmax, tick, labelW, fmtVal) {
+  // Horizontal bars. items: {label, value, lo, hi, tip}
+  const box = document.getElementById(id), W = box.clientWidth, RH = 32, m = {l: labelW, r: 56, t: 4, b: 24};
+  const H = m.t + items.length * RH + m.b, svg = svgIn(box, W, H), X = v => m.l + v / xmax * (W - m.l - m.r), y0 = m.t + items.length * RH;
+  for (let v = 0; v <= xmax; v += tick) {
+    el("line", {class: v ? "grid" : "axis", x1: X(v), x2: X(v), y1: m.t, y2: y0}, svg);
+    el("text", {class: "m", x: X(v), y: H - 6, "text-anchor": "middle"}, svg, v);
+  }
+  items.forEach((it, i) => {
+    const y = m.t + i * RH, cy = y + RH / 2;
+    const bg = el("rect", {class: "rowbg", x: 0, y, width: W, height: RH}, svg);
+    el("text", {x: m.l - 8, y: cy + 4, "text-anchor": "end"}, svg, it.label);
+    el("rect", {class: "bar", x: X(0), y: cy - 9, width: Math.max(1, X(it.value) - X(0)), height: 18, fill: "url(#hatch)"}, svg);
+    let end = it.value;
+    if (it.lo != null) {
+      el("line", {class: "whisk", x1: X(it.lo), x2: X(it.hi), y1: cy, y2: cy}, svg);
+      for (const v of [it.lo, it.hi]) el("line", {class: "whisk", x1: X(v), x2: X(v), y1: cy - 5, y2: cy + 5}, svg);
+      end = Math.max(end, it.hi);
+    }
+    el("text", {class: "b", x: X(end) + 7, y: cy + 4}, svg, fmtVal(it.value));
+    const hit = el("rect", {class: "hit", x: 0, y, width: W, height: RH}, svg);
+    const move = e => { bg.classList.add("on"); showTip(it.tip, e.clientX, e.clientY); };
+    hit.addEventListener("pointermove", move); hit.addEventListener("pointerdown", move);
+    hit.addEventListener("pointerleave", () => { bg.classList.remove("on"); hideTip(); });
+  });
+}
+function hourly(id, day) {
+  const by = new Map();
+  for (const s of on) if (s.day === day) { const k = Math.floor(s.ms / 3600e3); if (!by.has(k)) by.set(k, []); by.get(k).push(s.n); }
+  const items = [...by.keys()].sort((a, b) => a - b).map(k => {
+    const v = by.get(k), h = localHour(k * 3600e3), lo = Math.min(...v), hi = Math.max(...v);
+    return {label: fmtHour(h), value: mean(v), lo, hi,
+            tip: `<i>${DAY[day]}, ${fmtHour(h)} to ${fmtHour((h + 1) % 24)}</i><b>Mean ${mean(v).toFixed(1)} persons</b>Lowest ${lo}, highest ${hi}<br>${v.length} samples`};
+  });
+  rows(id, items, 25, 5, 52, v => v.toFixed(1));
+}
+function levels() {
+  const items = LEVELS.map(([nm, lo, hi]) => {
+    const k = on.filter(s => s.n >= lo && s.n <= hi).length, p = 100 * k / on.length;
+    return {label: `${nm} (${hi === 999 ? lo + "+" : lo + "–" + hi})`, value: p,
+            tip: `<i>${nm}: ${hi === 999 ? lo + " or more" : lo + " to " + hi} persons in frame</i><b>${p.toFixed(1)}% of samples</b>${k} of ${on.length} samples<br>${(k * 5 / 60).toFixed(1)} hours`};
+  });
+  rows("lev", items, 50, 10, 118, v => v.toFixed(0) + "%");
+}
+function hist() {
+  const box = document.getElementById("hist"), W = box.clientWidth, H = 260, m = {l: 30, r: 12, t: 24, b: 26};
+  const svg = svgIn(box, W, H), mx = Math.max(...on.map(s => s.n)), c = Array.from({length: mx + 1}, (_, k) => on.filter(s => s.n === k).length);
+  const YMAX = 20, bw = (W - m.l - m.r) / (mx + 1), X = k => m.l + k * bw, Y = v => H - m.b - v / YMAX * (H - m.t - m.b);
+  for (let v = 0; v <= YMAX; v += 5) {
+    el("line", {class: v ? "grid" : "axis", x1: m.l, x2: W - m.r, y1: Y(v), y2: Y(v)}, svg);
+    el("text", {class: "m", x: m.l - 6, y: Y(v) + 4, "text-anchor": "end"}, svg, v);
+  }
+  LEVELS.forEach(([nm, lo, hi]) => {
+    el("line", {class: "dash", x1: X(lo), x2: X(lo), y1: m.t - 14, y2: Y(0)}, svg);
+    const w = (Math.min(hi, mx) - lo + 1) * bw;
+    if (w > nm.length * 7.5 + 8) el("text", {x: X(lo) + w / 2, y: m.t - 6, "text-anchor": "middle"}, svg, nm);
+  });
+  const every = bw >= 22 ? 1 : bw >= 12 ? 2 : 5;
+  c.forEach((v, k) => {
+    const bg = el("rect", {class: "rowbg", x: X(k), y: m.t, width: bw, height: Y(0) - m.t}, svg);
+    if (v) el("rect", {class: "bar", x: X(k) + 1, y: Y(v), width: Math.max(1, bw - 2), height: Y(0) - Y(v), fill: "url(#hatch)"}, svg);
+    if (k % every === 0) el("text", {class: "m", x: X(k) + bw / 2, y: H - 6, "text-anchor": "middle"}, svg, k);
+    const hit = el("rect", {class: "hit", x: X(k), y: m.t, width: bw, height: Y(0) - m.t}, svg);
+    const lv = LEVELS.find(([, lo, hi]) => k >= lo && k <= hi);
+    const move = e => { bg.classList.add("on");
+      showTip(`<i>${k} ${k === 1 ? "person" : "persons"} in frame${lv ? " (" + lv[0].toLowerCase() + ")" : ""}</i><b>${v} ${v === 1 ? "sample" : "samples"}</b>${(100 * v / on.length).toFixed(1)}% of ${on.length} lights-on samples`, e.clientX, e.clientY); };
+    hit.addEventListener("pointermove", move); hit.addEventListener("pointerdown", move);
+    hit.addEventListener("pointerleave", () => { bg.classList.remove("on"); hideTip(); });
+  });
+}
+function tables() {
+  const cols = [["label", "Period"], ["n", "Samples"], ["mean", "Mean"], ["sd", "Std. dev."], ["min", "Min."], ["q1", "Lower quartile"], ["med", "Median"],
+                ["q3", "Upper quartile"], ["max", "Max."], ["tmax", "Time of max."], ["ph", "Person-hours"]];
+  document.getElementById("stats").innerHTML = "<thead><tr>" + cols.map(c => `<th>${c[1]}</th>`).join("") + "</tr></thead><tbody>" +
+    D.stats.map(r => "<tr>" + cols.map(c => `<td>${r[c[0]]}</td>`).join("") + "</tr>").join("") + "</tbody>";
+  document.getElementById("all").innerHTML = "<thead><tr><th>Time</th><th>Persons</th><th>Level</th><th>Lights</th><th>Confidence</th><th>Dogs</th></tr></thead><tbody>" +
+    D.samples.map(s => `<tr><td>${DAY[s.day].slice(0, 3)}. ${s.lab}</td><td>${s.on ? s.n : ""}</td><td>${s.on ? cap(s.level) : ""}</td><td>${s.on ? "On" : "Off"}</td><td>${s.on ? s.conf : ""}</td><td>${s.dogs || ""}</td></tr>`).join("") + "</tbody>";
+}
+document.getElementById("intro").textContent = `One frame was taken from the recording every 5 minutes (${D.nAll} samples) and the persons visible in it were counted. Statistics use the ${D.nOn} samples taken with the gallery lights on.`;
+document.getElementById("head").innerHTML = D.head.map(h => `<li><b>${h[0]}</b><span>${h[1]}</span></li>`).join("");
+function draw() { timeline("tl1", 1); timeline("tl2", 2); hourly("hr1", 1); hourly("hr2", 2); hist(); levels(); }
+tables(); draw();
+let lastW = document.documentElement.clientWidth, timer;
+window.addEventListener("resize", () => { clearTimeout(timer); timer = setTimeout(() => { const w = document.documentElement.clientWidth; if (w !== lastW) { lastW = w; hideTip(); draw(); } }, 120); });
+window.addEventListener("scroll", hideTip, {passive: true});
+</script>
+</body>
+</html>

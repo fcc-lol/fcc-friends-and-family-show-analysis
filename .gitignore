@@ -1,0 +1,7 @@
+venv/
+build/
+__pycache__/
+.DS_Store
+# Video stills of visitors: kept on the machine that made them, not in the repo
+data/frames/
+data/strips/
