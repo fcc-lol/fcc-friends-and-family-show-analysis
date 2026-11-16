@@ -12,7 +12,7 @@ Show: November 14-15, 2026, at 100 N 3rd St. Written November 16, 2026.
 | Seven phone slides (1080 x 1920 PNG) | `output/phone-slides/` |
 | The seven slides as one PDF | `output/gallery-crowd-slides.pdf` |
 | Interactive charts, one self-contained HTML file | `output/gallery-crowd-charts.html` |
-| Everything used to make them | `~/Desktop/fcc-friends-and-family-show-analysis/` (this folder) |
+| Everything used to make them | this folder |
 
 ## Folder layout
 
