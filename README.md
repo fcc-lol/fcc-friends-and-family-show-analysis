@@ -1,4 +1,4 @@
-# FCC Friends & Family Show analysis
+# FCC Friends & Family Show Analysis
 
 Crowd counts from the live-stream recording of the FCC Friends & Family Show, November 14-15, 2026, at 100 N 3rd St.
 
